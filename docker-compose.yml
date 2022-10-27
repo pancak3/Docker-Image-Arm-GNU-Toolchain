@@ -1,0 +1,7 @@
+version: "3.0"
+
+services:
+    Arm-GNU-Toolchain:
+      build: .
+      image: cloudslab/arm-gnu-toolchain:11.2
+      container_name: Arm-GNU-Toolchain-11-2
