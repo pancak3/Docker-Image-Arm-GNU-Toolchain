@@ -44,8 +44,22 @@ RUN ../abe/abe.sh \
     --manifest arm-gnu-toolchain-arm-none-eabi-abe-manifest.txt \
     --build all
 
-# main
-FROM base AS main
-COPY --from=builder /usr/bin/aarch64* /usr/bin/
+## newlib_nano
+WORKDIR /workspace/build_newlib
+RUN git clone https://git.linaro.org/toolchain/abe.git
+RUN abe/configure
+RUN wget --https-only \
+    "https://developer.arm.com/-/media/Files/downloads/gnu/12.2.mpacbti-bet1/manifest/arm-gnu-toolchain-arm-none-eabi-nano-abe-manifest.txt"
+RUN abe/abe.sh \
+    --manifest arm-gnu-toolchain-arm-none-eabi-nano-abe-manifest.txt \
+    --build all
+RUN cd .. \
+    && wget --https-only \
+    "https://developer.arm.com/-/media/Files/downloads/gnu/12.2.mpacbti-bet1/manifest/copy_nano_libraries.sh" | sh
+WORKDIR /workspace/build
+
+# # main
+# FROM base AS main
+# COPY --from=builder /usr/bin/aarch64* /usr/bin/
 
 ENTRYPOINT [ "bash", "-l"]

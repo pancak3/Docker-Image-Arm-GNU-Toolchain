@@ -1,7 +1,10 @@
 version: "3.0"
 
 services:
-    Arm-GNU-Toolchain:
-      build: .
-      image: cloudslab/arm-gnu-toolchain:11.2
-      container_name: Arm-GNU-Toolchain-11-2
+
+  Arm-GNU-Toolchain-12-2:
+    build: 
+      context: .
+      dockerfile: ./Dockerfile-12-2
+    image: cloudslab/arm-gnu-toolchain:12.2
+    container_name: Arm-GNU-Toolchain-12-2
