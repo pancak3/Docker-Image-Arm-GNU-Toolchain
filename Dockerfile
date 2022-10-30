@@ -1,58 +1,51 @@
 # Base
 FROM debian:stable-slim AS base
-ENV _BUILD_PATH="/build"
-ENV _SOURCE_PATH="${_BUILD_PATH}/gcc-arm-src"
-ENV _FILE_NAME="gcc-arm-src-snapshot-11.2-2022.02"
-ENV _FILE="${_FILE_NAME}.tar.xz"
-ENV _SOURCE="${_SOURCE_PATH}/${_FILE_NAME}"
-ENV _PREFIX="/arm-gnu-toolchain"
 
-FROM base AS src_code
-# Source Code
-## workspace
-WORKDIR /workspace
-RUN mkdir -p ${_BUILD_PATH}
-
-## Download source code
+# APT
+FROM base AS apt
 RUN apt-get update
 RUN apt-get install -y wget
-RUN wget --https-only \
-    "https://developer.arm.com/-/media/Files/downloads/gnu/11.2-2022.02/srcrel/gcc-arm-src-snapshot-11.2-2022.02.tar.xz"
-
-## Extract
-RUN apt-get install -y xz-utils
-RUN mkdir -p ${_SOURCE_PATH} \
-    && tar xvf \
-        ${_FILE} \
-        -C ${_SOURCE_PATH} \
-    && rm ${_FILE}
-
-FROM base AS builder
-COPY --from=src_code ${_SOURCE_PATH} ${_SOURCE_PATH}
-
-## Build deps
-RUN apt-get update
-RUN apt-get install -y build-essential
-RUN apt-get install -y gcc-multilib
 RUN apt-get install -y curl
-WORKDIR "${_SOURCE}"
-## Download prerequisites
-RUN ./contrib/download_prerequisites
+
+# Builder
+## Ref: https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads
+##      see "Building Linux hosted toolchain from sources using Linaro's ABE"
+##      of "Release Note for Downloads 12.2.MPACBTI-Bet1"
+FROM apt AS builder
+WORKDIR /workspace
+RUN wget --https-only \
+    "https://raw.githubusercontent.com/git/git/master/contrib/workdir/git-new-workdir" \
+    -O /usr/local/bin/git-new-workdir \
+    && chmod +x /usr/local/bin/git-new-workdir
+RUN apt-get install -y git
+RUN apt-get install -y gcc
 RUN apt-get install -y flex
-## Outpath
-RUN mkdir ${_PREFIX}
-RUN ./configure --prefix=${_PREFIX}
-RUN make -j $(nproc)
-RUN make install
+RUN apt-get install -y bison
+RUN apt-get install -y autogen
+RUN apt-get install -y texinfo
+RUN apt-get install -y gawk
+RUN apt-get install -y libncurses5-dev
+RUN apt-get install -y python3-dev
+RUN apt-get install -y zlib1g-dev
+RUN apt-get install -y dejagnu
+RUN apt-get install -y autoconf
+RUN apt-get install -y automake
+RUN apt-get install -y libtool
+RUN apt-get install -y build-essential
+RUN apt-get install -y rsync
+RUN ln -s /usr/bin/python3 /usr/bin/python
+
+RUN git clone https://git.linaro.org/toolchain/abe.git
+WORKDIR /workspace/build
+RUN wget --https-only \
+    "https://developer.arm.com/-/media/Files/downloads/gnu/12.2.mpacbti-bet1/manifest/arm-gnu-toolchain-arm-none-eabi-abe-manifest.txt"
+RUN ../abe/configure
+RUN ../abe/abe.sh \
+    --manifest arm-gnu-toolchain-arm-none-eabi-abe-manifest.txt \
+    --build all
 
 # main
 FROM base AS main
-COPY --from=builder ${_PREFIX} ${_PREFIX}
-
-WORKDIR /workspace
-ENV _PROFILE_PATH="/etc/profile"
-RUN echo \
-    "export PATH=${_PREFIX}/bin:\$PATH" \
-    >> "${_PROFILE_PATH}"
+COPY --from=builder /usr/bin/aarch64* /usr/bin/
 
 ENTRYPOINT [ "bash", "-l"]
